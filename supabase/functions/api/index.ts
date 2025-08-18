@@ -34,7 +34,15 @@ serve(async (req: Request) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
-  const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+  const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+  console.log("OPENAI_API_KEY present:", !!openaiApiKey);
+  if (!openaiApiKey) {
+    return new Response(
+      JSON.stringify({ error: "OpenAI API key is missing from environment variables." }),
+      { status: 500, headers: { ...corsHeaders, "content-type": "application/json" } }
+    );
+  }
+  const openai = new OpenAI({ apiKey: openaiApiKey });
 
   if (req.method==="POST" && path==="/upload/complete") {
     const body = await req.json(); // { wellId, rows } rows = [{depth, sh_percent, ss_percent, ls_percent, dol_percent, anh_percent, coal_percent, salt_percent, DT, GR}]
@@ -65,12 +73,49 @@ serve(async (req: Request) => {
   }
 
   if (req.method==="POST" && path==="/chat") {
-    const { wellId, question } = await req.json();
-    const { data } = await supabase.from("tracks").select("depth,sh_percent,ss_percent,ls_percent,dol_percent,anh_percent,coal_percent,salt_percent,dt,gr").eq("well_id", wellId).order("depth").limit(1200);
+    let body;
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.error("Failed to parse JSON body:", err);
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } });
+    }
+
+    const { wellId, question } = body;
+    if (typeof wellId !== "string" || typeof question !== "string") {
+      console.error("Invalid input: wellId or question missing or not a string");
+      return new Response(JSON.stringify({ error: "Missing or invalid 'wellId' or 'question' field" }), { status: 400, headers: { ...corsHeaders, "content-type": "application/json" } });
+    }
+
+    const { data, error } = await supabase.from("tracks").select("depth,sh_percent,ss_percent,ls_percent,dol_percent,anh_percent,coal_percent,salt_percent,dt,gr").eq("well_id", wellId).order("depth").limit(1200);
+    if (error) {
+      console.error("Supabase query error:", error);
+      return new Response(JSON.stringify({ error: "Failed to fetch data from database" }), { status: 500, headers: { ...corsHeaders, "content-type": "application/json" } });
+    }
+
     const sys = `You are a geoscience assistant. Use the provided JSON rows to answer briefly about trends of DT and GR vs depth and composition bands.`;
     const user = `Question: ${question}\nData: ${JSON.stringify(data?.slice(0,800))}`;
-    const r = await openai.chat.completions.create({ model:"gpt-4o-mini", temperature:0.2, messages:[{role:"system",content:sys},{role:"user",content:user}]});
-    return new Response(JSON.stringify({ answer: r.choices[0].message.content }), { headers:{...corsHeaders,"content-type":"application/json"}});
+
+    try {
+      // Try with gpt-4o-mini first
+      const r = await openai.chat.completions.create({ model:"gpt-4o-mini", temperature:0.2, messages:[{role:"system",content:sys},{role:"user",content:user}]});
+      return new Response(JSON.stringify({ answer: r.choices[0].message.content }), { headers:{...corsHeaders,"content-type":"application/json"}});
+    } catch (err) {
+      console.error("OpenAI API error with gpt-4o-mini:", err);
+      // Check if error is quota related (basic check)
+      const errMsg = String(err).toLowerCase();
+      if (errMsg.includes("quota") || errMsg.includes("rate limit") || errMsg.includes("limit")) {
+        try {
+          // Fallback to gpt-3.5-turbo
+          const rFallback = await openai.chat.completions.create({ model:"gpt-3.5-turbo", temperature:0.2, messages:[{role:"system",content:sys},{role:"user",content:user}]});
+          return new Response(JSON.stringify({ answer: rFallback.choices[0].message.content, fallback: true }), { headers:{...corsHeaders,"content-type":"application/json"}});
+        } catch (err2) {
+          console.error("OpenAI API error with fallback gpt-3.5-turbo:", err2);
+          return new Response(JSON.stringify({ error: "Failed to get response from AI service after fallback" }), { status: 500, headers: { ...corsHeaders, "content-type": "application/json" } });
+        }
+      }
+      return new Response(JSON.stringify({ error: "Failed to get response from AI service" }), { status: 500, headers: { ...corsHeaders, "content-type": "application/json" } });
+    }
   }
 
   console.log("404 Not Found for:", req.method, url.pathname);

@@ -151,12 +151,7 @@ To learn more about Next.js, take a look at the following resources:
 - [Next.js GitHub repository](https://github.com/vercel/next.js)
 
 ## Demo Video
-[A comprehensive video walkthrough demonstrating:
-1. Data upload workflow
-2. Visualization interface
-3. AI-assisted analysis
-4. Real-time querying
-5. System architecture]
+[A comprehensive video walkthrough demonstrating: https://www.loom.com/share/240023aca480409d9519d2971c1a352c?sid=4d06d666-daae-4696-aa5e-d05e86cc7073]
 
 ## License
 None

@@ -13,13 +13,31 @@ export default function ChatBox({ wellId }:{ wellId:string }) {
     if (!q.trim()) return;
     setMsgs(m=>[...m, { role:'user', text:q }]);
     setQ('');
-    const res = await fetch(`${API}/chat`, {
-      method:'POST',
-      headers:{ 'content-type':'application/json' },
-      body: JSON.stringify({ wellId, question: q })
-    });
-    const data = await res.json();
-    setMsgs(m=>[...m, { role:'assistant', text:data.answer ?? 'No answer' }]);
+    try {
+      const res = await fetch(`${API}/chat`, {
+        method:'POST',
+        headers:{ 'content-type':'application/json' },
+        body: JSON.stringify({ wellId, question: q })
+      });
+      if (!res.ok) {
+        console.error(`HTTP error! status: ${res.status}`);
+        setMsgs(m=>[...m, { role:'assistant', text: 'Sorry, something went wrong while fetching the answer.' }]);
+        return;
+      }
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonError) {
+        console.error('Error parsing JSON:', jsonError);
+        setMsgs(m=>[...m, { role:'assistant', text: 'Sorry, received invalid response from the server.' }]);
+        return;
+      }
+      console.log("🚀 ~ send ~ data:", data)
+      setMsgs(m=>[...m, { role:'assistant', text:data.answer ?? 'No answer' }]);
+    } catch (error) {
+      console.error('Network or unexpected error:', error);
+      setMsgs(m=>[...m, { role:'assistant', text: 'Sorry, failed to send your question. Please try again.' }]);
+    }
   }
 
   return (
