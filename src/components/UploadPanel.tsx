@@ -10,11 +10,11 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>('');
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (data: { rows: any[]; csv?: string }) => {
+    mutationFn: async (rows:any[]) => {
       const res = await fetch(`${API}/upload/complete`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ wellId, rows: data.rows, csv: data.csv })
+        body: JSON.stringify({ wellId, rows })
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -29,23 +29,30 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-
-      // If file is .xlsx, also convert it into CSV string
-      let csv: string | undefined;
-      if (file.name.endsWith(".xlsx")) {
-        csv = XLSX.utils.sheet_to_csv(ws);
-        console.log("CSV Preview:", csv.slice(0, 200)); // optional preview
-      }
-
-      const json = XLSX.utils.sheet_to_json<any>(ws, { defval: null });
-      // normalize
-      const rows = json.map(r=>({
-        depth: Number(r.depth ?? r.Depth ?? r.DEPTH),
-        composition: String(r.composition ?? r.Rock ?? r['rock composition'] ?? ''),
-        DT: Number(r.DT ?? r.dt ?? r['Δt'] ?? r['Sonic'] ?? 0),
-        GR: Number(r.GR ?? r.gr ?? r['Gamma'] ?? 0)
-      })).filter(r=>!Number.isNaN(r.depth));
-      await mutateAsync({ rows, csv });
+      const json = XLSX.utils.sheet_to_json<any>(ws, { defval: null, raw: false });
+      // Normalize headers: trim and lowercase all keys in each row
+      const normalizedJson = json.map((row:any) => {
+        const normalizedRow: Record<string, any> = {};
+        Object.keys(row).forEach(key => {
+          const normKey = key.trim().toLowerCase();
+          normalizedRow[normKey] = row[key];
+        });
+        return normalizedRow;
+      });
+      // Now map using normalized keys
+      const rows = normalizedJson.map(r => ({
+        depth: Number(r['depth']),
+        sh_percent: Number(r['%sh'] ?? r['sh_percent'] ?? r['sh %'] ?? 0),
+        ss_percent: Number(r['%ss'] ?? r['ss_percent'] ?? r['ss %'] ?? 0),
+        ls_percent: Number(r['%ls'] ?? r['ls_percent'] ?? r['ls %'] ?? 0),
+        dol_percent: Number(r['%dol'] ?? r['dol_percent'] ?? r['dol %'] ?? 0),
+        anh_percent: Number(r['%anh'] ?? r['anh_percent'] ?? r['anh %'] ?? 0),
+        coal_percent: Number(r['%coal'] ?? r['coal_percent'] ?? r['coal %'] ?? 0),
+        salt_percent: Number(r['%salt'] ?? r['salt_percent'] ?? r['salt %'] ?? 0),
+        dt: Number(r['dt'] ?? 0),
+        gr: Number(r['gr'] ?? 0)
+      })).filter(r => !Number.isNaN(r.depth));
+      await mutateAsync(rows);
       setStatus(`Uploaded ${rows.length} rows ✅`);
     } catch (err:any) {
       setStatus(`Upload failed: ${err.message}`);
