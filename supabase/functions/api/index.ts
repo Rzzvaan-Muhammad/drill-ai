@@ -4,8 +4,11 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+// @ts-expect-error: The module "@supabase/functions" does not have TypeScript type definitions available, so we suppress the error.
 import { serve } from "https://deno.land/std/http/server.ts";
+// @ts-expect-error: Type definitions not available for remote ESM import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @ts-expect-error: TypeScript cannot find module "https://esm.sh/openai@4", so we suppress the error.
 import OpenAI from "https://esm.sh/openai@4";
 
 const corsHeaders = {
@@ -16,7 +19,7 @@ const corsHeaders = {
 
 console.log("Hello from Functions!")
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: { ...corsHeaders } });
   }
