@@ -9,9 +9,9 @@ import ChatBox from '@/components/ChatBox';
 export default function Dashboard() {
   const [wellId, setWellId] = useState('well-a');
   return (
-    <main className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_380px] gap-0 h-[calc(100vh-56px)]">
-      <WellSidebar selected={wellId} onSelect={setWellId} />
-      <section className="border-r overflow-auto">
+    <main className="flex h-[calc(100vh-56px)]">
+      <WellSidebar selected={wellId} onSelect={setWellId} className="w-[260px]" />
+      <section className="flex-1 border-r overflow-auto">
         <div className="flex items-center gap-2 p-3 border-b sticky top-0 bg-white">
           <nav className="flex gap-4 text-sm">
             <span className="font-semibold text-blue-600">Drilling Monitoring</span>
@@ -26,7 +26,7 @@ export default function Dashboard() {
         </div>
         <TracksPanel wellId={wellId} />
       </section>
-      <aside className="hidden lg:flex flex-col">
+      <aside className="hidden lg:flex flex-col w-[380px]">
         <ChatBox wellId={wellId} />
       </aside>
     </main>
