@@ -110,7 +110,7 @@ export default function TracksPanel({ wellId }: { wellId: string }) {
                       coal: 'Coal',
                       salt: 'Salt'
                     };
-                    return value !== null ? [`${value.toFixed(1)}%`, labels[name] || name] : ['N/A', labels[name] || name];
+                    return value !== null ? [`${(value as number).toFixed(1)}%`, labels[name] || name] : ['N/A', labels[name] || name];
                   }}
                 />
                 {Object.keys(compositionColors).map(key => (
