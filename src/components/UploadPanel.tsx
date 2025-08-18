@@ -4,13 +4,27 @@ import * as XLSX from 'xlsx';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+// Define the interface for an Excel row after normalization and mapping
+export interface ExcelRow {
+  depth: number;
+  sh_percent: number;
+  ss_percent: number;
+  ls_percent: number;
+  dol_percent: number;
+  anh_percent: number;
+  coal_percent: number;
+  salt_percent: number;
+  dt: number;
+  gr: number;
+}
+
 const API = process.env.NEXT_PUBLIC_SUPABASE_FN!; // e.g. https://.../functions/v1/api
 
-export default function UploadPanel({ wellId }:{ wellId:string }) {
+export default function UploadPanel({ wellId }: { wellId: string }) {
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>('');
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (rows:any[]) => {
+    mutationFn: async (rows: ExcelRow[]) => {
       const res = await fetch(`${API}/upload/complete`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -19,7 +33,7 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey:['tracks',wellId] }); }
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tracks', wellId] }); }
   });
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -29,10 +43,11 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<any>(ws, { defval: null, raw: false });
+      // Use unknown for the row type from sheet_to_json, since we will normalize it
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: null, raw: false });
       // Normalize headers: trim and lowercase all keys in each row
-      const normalizedJson = json.map((row:any) => {
-        const normalizedRow: Record<string, any> = {};
+      const normalizedJson: Record<string, unknown>[] = json.map((row) => {
+        const normalizedRow: Record<string, unknown> = {};
         Object.keys(row).forEach(key => {
           const normKey = key.trim().toLowerCase();
           normalizedRow[normKey] = row[key];
@@ -40,7 +55,7 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
         return normalizedRow;
       });
       // Now map using normalized keys
-      const rows = normalizedJson.map(r => ({
+      const rows: ExcelRow[] = normalizedJson.map(r => ({
         depth: Number(r['depth']),
         sh_percent: Number(r['%sh'] ?? r['sh_percent'] ?? r['sh %'] ?? 0),
         ss_percent: Number(r['%ss'] ?? r['ss_percent'] ?? r['ss %'] ?? 0),
@@ -54,8 +69,9 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
       })).filter(r => !Number.isNaN(r.depth));
       await mutateAsync(rows);
       setStatus(`Uploaded ${rows.length} rows ✅`);
-    } catch (err:any) {
-      setStatus(`Upload failed: ${err.message}`);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setStatus(`Upload failed: ${error.message}`);
     }
   }
 
@@ -65,7 +81,7 @@ export default function UploadPanel({ wellId }:{ wellId:string }) {
         Upload
         <input type="file" accept=".xlsx" onChange={onFileChange} className="hidden" />
       </label>
-      <span className="text-sm text-gray-600">{isPending?'Uploading…':status}</span>
+      <span className="text-sm text-gray-600">{isPending ? 'Uploading…' : status}</span>
     </>
   );
 }
