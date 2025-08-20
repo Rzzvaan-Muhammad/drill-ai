@@ -1,6 +1,6 @@
 // src/components/ChatBox.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 const API = process.env.NEXT_PUBLIC_SUPABASE_FN!;
 
 export default function ChatBox({ wellId }:{ wellId:string }) {
@@ -8,12 +8,19 @@ export default function ChatBox({ wellId }:{ wellId:string }) {
   const [msgs, setMsgs] = useState<{role:'user'|'assistant', text:string}[]>([
     { role:'assistant', text:"Hi, I’m Drill AI. Ask me anything about this well!" }
   ]);
+  const endRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [msgs]);
 
   async function send() {
     if (!q.trim()) return;
-    setMsgs(m=>[...m, { role:'user', text:q }]);
-    setQ('');
+    setLoading(true);
     try {
+      setMsgs(m=>[...m, { role:'user', text:q }]);
+      setQ('');
       const res = await fetch(`${API}/chat`, {
         method:'POST',
         headers:{ 'content-type':'application/json' },
@@ -37,6 +44,8 @@ export default function ChatBox({ wellId }:{ wellId:string }) {
     } catch (error) {
       console.error('Network or unexpected error:', error);
       setMsgs(m=>[...m, { role:'assistant', text: 'Sorry, failed to send your question. Please try again.' }]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -49,10 +58,16 @@ export default function ChatBox({ wellId }:{ wellId:string }) {
             <span className={`inline-block px-3 py-2 rounded-xl ${m.role==='user'?'bg-blue-500 text-white':'bg-gray-100'}`}>{m.text}</span>
           </div>
         ))}
+        <div ref={endRef}></div>
       </div>
+      {loading && (
+        <div className="p-3">
+          <div className="inline-block px-3 py-2 rounded-xl bg-gray-200 italic">Thinking...</div>
+        </div>
+      )}
       <div className="p-3 flex gap-2">
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Type messages here" className="flex-1 border rounded-lg px-3 py-2"/>
-        <button onClick={send} className="px-3 py-2 rounded-lg bg-blue-600 text-white">Send</button>
+        <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(); }} placeholder="Type messages here" className="flex-1 border rounded-lg px-3 py-2"/>
+        <button onClick={send} disabled={!q.trim() || loading} className={`px-3 py-2 rounded-lg text-white ${(!q.trim() || loading) ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600'}`}>{loading ? '...' : 'Send'}</button>
       </div>
     </div>
   );

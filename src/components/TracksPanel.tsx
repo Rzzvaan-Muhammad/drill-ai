@@ -8,6 +8,8 @@ import {
   Tooltip,
   Line,
   Area,
+  Legend,
+  CartesianGrid,
 } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 const API = process.env.NEXT_PUBLIC_SUPABASE_FN!;
@@ -90,15 +92,18 @@ export default function TracksPanel({ wellId }: { wellId: string }) {
                 data={compData}
                 margin={{ top: 20, right: 12, bottom: 10, left: 12 }}
               >
+                <CartesianGrid stroke="#eee" />
                 <YAxis
                   dataKey="depth"
                   type="number"
                   domain={[minDepth, maxDepth]}
                   reversed
-                  tickCount={6}
-                  width={40}
+                  tick={{ fontSize: 10 }}
+                  width={50}
+                  allowDecimals={false}
+                  ticks={Array.from({ length: Math.floor((maxDepth - minDepth) / 10) + 1 }, (_, i) => minDepth + i * 10)}
                 />
-                <XAxis type="number" domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} orientation="top" />
+                <XAxis type="number" domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} orientation="top" tick={{ fontSize: 10 }} />
                 <Tooltip
                   formatter={(value, name) => {
                     const labels: Record<string, string> = {
@@ -112,6 +117,13 @@ export default function TracksPanel({ wellId }: { wellId: string }) {
                     };
                     return value !== null ? [`${(value as number).toFixed(1)}%`, labels[name] || name] : ['N/A', labels[name] || name];
                   }}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="center"
+                  wrapperStyle={{ fontSize: 12 }}
+                  iconType="rect"
+                  formatter={(value) => value.toUpperCase()}
                 />
                 {Object.keys(compositionColors).map(key => (
                   <Area
@@ -139,9 +151,26 @@ export default function TracksPanel({ wellId }: { wellId: string }) {
                 data={compData}
                 margin={{ top: 20, right: 12, bottom: 10, left: 12 }}
               >
-                <YAxis dataKey="depth" type="number" domain={[minDepth, maxDepth]} reversed tickCount={6} width={40} />
-                <XAxis type="number" domain={[40, 110]} orientation="top" />
+                <CartesianGrid stroke="#eee" />
+                <YAxis
+                  dataKey="depth"
+                  type="number"
+                  domain={[minDepth, maxDepth]}
+                  reversed
+                  tick={{ fontSize: 10 }}
+                  width={50}
+                  allowDecimals={false}
+                  ticks={Array.from({ length: Math.floor((maxDepth - minDepth) / 10) + 1 }, (_, i) => minDepth + i * 10)}
+                />
+                <XAxis type="number" domain={[40, 110]} orientation="top" tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(value, name) => value !== null ? [value, name] : ['N/A', name]} />
+                <Legend
+                  verticalAlign="top"
+                  align="center"
+                  wrapperStyle={{ fontSize: 12 }}
+                  iconType="rect"
+                  formatter={(value) => value.toUpperCase()}
+                />
                 <Line type="linear" dataKey="DT" stroke="#e91e63" strokeWidth={1.4} dot={false} connectNulls isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -158,9 +187,26 @@ export default function TracksPanel({ wellId }: { wellId: string }) {
                 data={compData}
                 margin={{ top: 20, right: 12, bottom: 10, left: 12 }}
               >
-                <YAxis dataKey="depth" type="number" domain={[minDepth, maxDepth]} reversed tickCount={6} width={40} />
-                <XAxis type="number" domain={[20, 140]} orientation="top" />
+                <CartesianGrid stroke="#eee" />
+                <YAxis
+                  dataKey="depth"
+                  type="number"
+                  domain={[minDepth, maxDepth]}
+                  reversed
+                  tick={{ fontSize: 10 }}
+                  width={50}
+                  allowDecimals={false}
+                  ticks={Array.from({ length: Math.floor((maxDepth - minDepth) / 10) + 1 }, (_, i) => minDepth + i * 10)}
+                />
+                <XAxis type="number" domain={[20, 140]} orientation="top" tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(value, name) => value !== null ? [value, name] : ['N/A', name]} />
+                <Legend
+                  verticalAlign="top"
+                  align="center"
+                  wrapperStyle={{ fontSize: 12 }}
+                  iconType="rect"
+                  formatter={(value) => value.toUpperCase()}
+                />
                 <Line type="linear" dataKey="GR" stroke="#2196f3" strokeWidth={1.4} dot={false} connectNulls isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
